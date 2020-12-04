@@ -43,6 +43,48 @@ namespace Tests
             Assert.Equal(expected, result.Value);
         }
 
+        /*
+         * I think that separating out tests by return type makes
+         * the code cleaner and easier to follow
+         * 
+         * The next two methods are an example of how 
+         * GetInboxByIdTest could be split into two test functions
+         */
+
+        [Theory]
+        [InlineData(1, "Task A")]
+        public void GetInboxByIdOk(int id, string item)
+        {
+            // Arrange
+            Inbox expected = new Inbox() { Id = id, Item = item };
+            _inboxService.Setup(r => r.GetById(id)).ReturnsAsync(expected);
+
+            // Act
+            var result = _inboxController.Get(id).Result;
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            Inbox inbox = Assert.IsType<Inbox>(okResult.Value);
+
+            Assert.Equal(id, inbox.Id);
+            Assert.Equal(item, inbox.Item);
+        }
+
+        [Theory]
+        [InlineData(4)]
+        public void GetInboxByIdNotFound(int id)
+        {
+            // Arrange
+            Inbox expected = null;
+            _inboxService.Setup(r => r.GetById(id)).ReturnsAsync(expected);
+
+            // Act
+            var result = _inboxController.Get(id).Result;
+
+            // Assert
+            var notFoundResult = Assert.IsType<NotFoundResult>(result);
+            Assert.NotNull(notFoundResult);
+        }
 
         [Theory]
         [InlineData(1, true, "Task A")]

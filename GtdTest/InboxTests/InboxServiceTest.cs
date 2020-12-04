@@ -10,8 +10,35 @@ namespace Tests
 {
     public class InboxServiceTest : DbTest
     {
+        /*
+         * I find the separation of test data from the test makes it harder
+         * to see what is going on.  The comments help but I wonder if
+         * separating out expected success tests from failure tests would
+         * help as something like
+         * 
+         * [Theory]
+         * [MemberData(nameof(GetDataById_Valid))]
+         * public void GetById_ReturnsCorrectInbox(...) { ... }
+         * 
+         * [Theory]
+         * [MemberData(nameof(GetDataById_Invalid))]
+         * public void GetById_ReturnsNull(...) { ... }
+         * 
+         * would be clearer even if there is some repetative content in the functions
+         */
 
+        /*
+         * I do not think error handling is required on parsing dates that are part
+         * of the test data.  Assume that you know how to enter dates, the code
+         * needs to test the application, not the test data.
+         */
 
+        /*
+         * This may well just be a matter of taste but ...
+         * I think that IdList shouldn't be directly accessed in tests, it is part
+         * of the test data setup.  Would prefer something like IsIdInUse(id) to
+         * IdList.Contains(id).
+         */
 
         // "GetData" lists all expected cases, which are tested in turn
         [Theory]
@@ -20,6 +47,10 @@ namespace Tests
         {
             // Check any parameter dates are valid
             var inboxDates = new List<DateTime?>() { null, null };
+            /*
+             * If test is not required as for loop will exit without
+             * doing anything if dates.Length == 0
+             */
             if (dates.Length > 0)
             {
                 int idx = 0;
@@ -93,7 +124,49 @@ namespace Tests
             }
         }
 
+        /*
+         * As with Controller tests, separating success and failure
+         * makes for easier to read tests
+         * 
+         * Following are two example CreateInbox_ tests
+         */
+        [Theory]
+        [InlineData("Do Something Difficult")]
+        [InlineData("Extra Thing")]
+        public async void CreateInbox_Succeeds(string item)
+        {
+            // Arrange
+            var inboxServ = new InboxService(MakeInMemoryContext());
+            var newInbox = new Inbox() { Item = item };
 
+            // Act
+            var actual = await inboxServ.Create(newInbox);
+            var now = DateTime.UtcNow;
+
+            // Assert
+            Assert.NotNull(actual);
+            Assert.False(IdList.Contains(actual.Id), "Error: Inbox Id already exists");
+            Assert.NotEqual(0, actual.Id);
+            Assert.Equal(item, actual.Item);
+            Assert.True(CheckSecondTimeDiff(now, actual.CreateTime, 100));
+            Assert.Null(actual.ModifyTime);
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData(null)]
+        public async void CreateInbox_Fails(string item)
+        {
+            // Arrange
+            var inboxServ = new InboxService(MakeInMemoryContext());
+            var newInbox = new Inbox() { Item = item };
+
+            // Act
+            var actual = await inboxServ.Create(newInbox);
+
+            // Assert
+            Assert.Null(actual);
+        }
 
         // Ensure only valid inboxes are created and that their IDs
         // do not replicate any existing test inboxes.
@@ -142,6 +215,9 @@ namespace Tests
         {
             // Check input parameter dates are valid
             var inboxDates = new List<DateTime?>() { null, null };
+            /*
+             * As above, if test not required
+             */
             if (dates.Length > 0)
             {
                 int idx = 0;
@@ -186,6 +262,9 @@ namespace Tests
         {
             // Check any parameter dates are valid
             var inboxDates = new List<DateTime?>() { null, null };
+            /*
+             * As above, if test not required
+             */
             if (dates.Length > 0)
             {
                 int idx = 0;
@@ -313,6 +392,13 @@ namespace Tests
                 new object[] { 5, "Simple Task", "17/02/2020 16:40:00" },
             };
 
+            /*
+             * Dupicating data like this can cause problems,
+             * for example if someone adds to the array above but doesn't realise
+             * the link to this one.
+             * Also, IdList is meant to reflect the ids in the database seed
+             * so it would be better initialising it in the SeedDatabase method.
+             */
             // Initialise private IdList array
             IdList = new int[] { 1, 2, 3, 5 };
 
@@ -356,6 +442,9 @@ namespace Tests
             var item = data.ElementAt(rand.Next(1, data.Count()));
             itemList.Add(new object[] { item[0], item[1], item[2], true });
 
+            /*
+             * How can itemList.Count be anything other than 1!
+             */
             // Check list has one item
             if (itemList.Count() != 1)
                 throw new Exception("Error: selecting a valid test inbox");
